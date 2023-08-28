@@ -1,6 +1,8 @@
 from ultralytics import YOLO
+from PIL import Image
 import cv2
 import math
+import os
 
 
 # model
@@ -22,10 +24,20 @@ classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "trai
 users=[]
 
 def PersonDetection():
+    '''
+    :return: detects people in the image, returns a tuple of image
+    and dictionary with number of bounding box and their coordinattes
+    '''
     # start webcam
     cap = cv2.VideoCapture(0)
     cap.set(3, 640)
     cap.set(4, 480)
+
+    #create a folder for all the images
+    path="images"
+    if not os.path.exists(path):
+        # Create a new directory because it does not exist
+        os.makedirs(path)
 
     images = []
 
@@ -33,7 +45,8 @@ def PersonDetection():
     #getting one image from he webcam
     success, img = cap.read()
     results = model(img, stream=True)
-
+    counter=0
+    dict={}
     # coordinates
     for r in results:
         images = []
@@ -49,11 +62,12 @@ def PersonDetection():
                 # bounding box
                 x1, y1, x2, y2 = box.xyxy[0]
                 x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)  # convert to int values
-                users.append((x1, y1, x2, y2))
+                coordinates=(x1, y1, x2, y2)
 
                 # put box in cam
                 cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 3)
                 print("{}  {}  {}  {}".format(x1, y1, x2, y2))
+                dict[counter]=((x1, y1, x2, y2))
                 # pose_estimator_dim.append([(x1, y1), (x2, y2)])
                 cropped_img = img[y1:y2, x1:x2]
 
@@ -64,15 +78,18 @@ def PersonDetection():
                 # confidence
                 confidence = math.ceil((box.conf[0] * 100)) / 100
                 cv2.imshow('Webcam', img)
+                # Save Frame by Frame into disk using imwrite method
+                cv2.imwrite(f'{path}/Bounded_image' + str(counter) + '.jpg', img)
+                imagepath=f'{path}/Bounded_image' + str(counter) + '.jpg'
                 cv2.waitKey()
                 # if cv2.waitKey(1) == ord('q'):
                 #     break
                 cap.release()
 
                 cv2.destroyAllWindows()
-    return users
+    return (imagepath,dict)
 
-print(PersonDetection())
+
 
 
 
