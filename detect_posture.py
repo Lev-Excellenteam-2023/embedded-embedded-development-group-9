@@ -60,7 +60,8 @@ pose = mp_pose.Pose()
 
 def monitor(user: User) -> (bool, str):
     # For webcam input replace file name with 0
-    file_name = 0
+    # file_name = 0
+    file_name = r'C:\Users\tamar\excellenteam\bootcamp\raspberryProj\project\test-data\WIN_20230829_10_34_47_Pro.mp4'
     cap = cv2.VideoCapture(file_name)
 
     # Video writer for video output
@@ -71,7 +72,7 @@ def monitor(user: User) -> (bool, str):
     success, original_image = cap.read()
     if not success:
         print("Null.Frames")
-        return
+        return False, ''
 
     # Get webcam default frames per second
     fps = cap.get(cv2.CAP_PROP_FPS)
@@ -96,7 +97,7 @@ def monitor(user: User) -> (bool, str):
     lm = key_points.pose_landmarks
     lm_pose = mp_pose.PoseLandmark
     if not lm:
-        return
+        return False, ''
 
     # Get the landmark coordinates
     # Left shoulder.
