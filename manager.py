@@ -1,6 +1,6 @@
 from Person_Detection import PersonDetection
 from user import User
-import data
+import users_database
 
 
 # global variable of list of users
@@ -16,6 +16,6 @@ def get_workspace_image():
 def add_user(chat_id: int, coordinates: tuple):
     new_user = User(chat_id, coordinates)
     # adding user to userlist, (firbase)
-    data.add_user(new_user)
+    users_database.add_user(new_user)
 
 
