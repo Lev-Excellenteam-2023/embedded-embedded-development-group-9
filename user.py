@@ -12,4 +12,7 @@ class User:
     def __init__(self, chat_id, crop):
         self.chat_id = chat_id
         self.crop = crop
+        self.good_frames = 0
+        self.bad_frames = 0
+        self.user_frames = []
 
