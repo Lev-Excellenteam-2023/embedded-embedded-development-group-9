@@ -1,19 +1,21 @@
 from Person_Detection import PersonDetection
 from user import User
-import data
+import users_database
+
 
 # global variable of list of users
-user = []
+users = []
 
 
-def add_user():
+def get_workspace_image():
     # gets the image with boundingboxes
-    imagepath, bounding_box_dict = PersonDetection()
-    # TODO function Rivky needs to add that works with the telegram
+    image_path, bounding_box_dict = PersonDetection()
+    return image_path, bounding_box_dict
 
-    # gets user with corresponding boundingbox
-    user_id, num = telegram_user(imagepath)
-    # TODO integration with Tamari to create a user
-    new_user = User(user_id, bounding_box_dict[num])
-    #adding user to userlist, (firbase)
-    data.add_user(new_user)
+
+def add_user(chat_id: int, coordinates: tuple):
+    new_user = User(chat_id, coordinates)
+    # adding user to userlist, (firbase)
+    users_database.add_user(new_user)
+
+
