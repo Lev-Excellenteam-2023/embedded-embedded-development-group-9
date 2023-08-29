@@ -1,8 +1,12 @@
+import random
+
 import cv2
 import time
 import math as m
 import mediapipe as mp
-from send_notification import send_notification
+from user import User
+
+from consts import CAM_ALIGNMENT_OFFSET, NECK_INCLINATION_THRESHOLD, TORSO_INCLINATION_THRESHOLD, GOOD_FRAMES_OFFSET
 
 
 def calc_distance(x1, y1, x2, y2):
@@ -17,9 +21,17 @@ def calc_angle(x1, y1, x2, y2):
     return degree
 
 
-# Initialize frame counters
-good_frames = 0
-bad_frames = 0
+def init_videowriter(video_capture):
+    # Meta
+    fps = int(video_capture.get(cv2.CAP_PROP_FPS))
+    width = int(video_capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    frame_size = (width, height)
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+
+    # Return video writer
+    return cv2.VideoWriter('output.mp4', fourcc, fps, frame_size)
+
 
 # Font type
 font = cv2.FONT_HERSHEY_SIMPLEX
@@ -33,152 +45,164 @@ light_green = (127, 233, 100)
 yellow = (0, 255, 255)
 pink = (255, 0, 255)
 
+bad_posture_messages = [
+    "Hey there, it looks like your spine's on vacation. Can you please bring it back to work and sit straight?",
+    "Are you trying out for the 'Leaning Tower of Pisa' impersonation contest? If not, let's straighten up!",
+    "Hate to break it to you, but your chair isn't a hammock. Let's give the hammock vibes a break and sit properly.",
+    "Rumor has it that the 'Couch Potato Olympics' are next week. Until then, let's work on sitting straight, champ.",
+    "I hope you have a slouching permit, because the 'No Slouching Zone' is right here. Sit straight and stay legal!"
+]
+
 # Initialize mediapipe pose class
 mp_pose = mp.solutions.pose
 pose = mp_pose.Pose()
 
 
-if __name__ == "__main__":
-    # For webcam input replace file name with 0.
+def monitor(user: User) -> (bool, str):
+    # For webcam input replace file name with 0
     file_name = 0
     cap = cv2.VideoCapture(file_name)
 
-    # Meta.
-    fps = int(cap.get(cv2.CAP_PROP_FPS))
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    frame_size = (width, height)
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-
-    # Video writer.
-    video_output = cv2.VideoWriter('output.mp4', fourcc, fps, frame_size)
+    # Video writer for video output
+    video_output = init_videowriter(cap)
     time.sleep(5)
 
-    while cap.isOpened():
-        # Capture frames.
-        success, image = cap.read()
-        if not success:
-            print("Null.Frames")
-            break
-        # Get fps.
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        # Get height and width.
-        h, w = image.shape[:2]
+    # Capture frame from webcam
+    success, original_image = cap.read()
+    if not success:
+        print("Null.Frames")
+        return
 
-        # Convert the BGR image to RGB.
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    # Get webcam default frames per second
+    fps = cap.get(cv2.CAP_PROP_FPS)
 
-        # Process the image.
-        keypoints = pose.process(image)
+    # Get the user bounding box
+    x1, y1, x2, y2 = user.crop
+    image = original_image[y1:y2, x1:x2]
 
-        # Convert the image back to BGR.
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    # Get height and width
+    h, w = image.shape[:2]
 
-        # Use lm and lmPose as representative of the following methods.
-        lm = keypoints.pose_landmarks
-        lmPose = mp_pose.PoseLandmark
+    # Convert the BGR image to RGB.
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        if not lm:
-            continue
-        # Acquire the landmark coordinates.
-        # Once aligned properly, left or right should not be a concern.
-        # Left shoulder.
-        l_shldr_x = int(lm.landmark[lmPose.LEFT_SHOULDER].x * w)
-        l_shldr_y = int(lm.landmark[lmPose.LEFT_SHOULDER].y * h)
-        # Right shoulder
-        r_shldr_x = int(lm.landmark[lmPose.RIGHT_SHOULDER].x * w)
-        r_shldr_y = int(lm.landmark[lmPose.RIGHT_SHOULDER].y * h)
-        # Left ear.
-        l_ear_x = int(lm.landmark[lmPose.LEFT_EAR].x * w)
-        l_ear_y = int(lm.landmark[lmPose.LEFT_EAR].y * h)
-        # Left hip.
-        l_hip_x = int(lm.landmark[lmPose.LEFT_HIP].x * w)
-        l_hip_y = int(lm.landmark[lmPose.LEFT_HIP].y * h)
+    # Process pose
+    key_points = pose.process(image)
 
-        # Calculate distance between left shoulder and right shoulder points.
-        offset = calc_distance(l_shldr_x, l_shldr_y, r_shldr_x, r_shldr_y)
+    # Convert the image back to BGR.
+    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
-        # Assist to align the camera to point at the side view of the person.
-        # Offset threshold 30 is based on results obtained from analysis over 100 samples.
-        if offset < 100:
-            cv2.putText(image, str(int(offset)) + ' Aligned', (w - 150, 30), font, 0.9, green, 2)
-        else:
-            cv2.putText(image, str(int(offset)) + ' Not Aligned', (w - 150, 30), font, 0.9, red, 2)
+    # Use lm and lm_pose as representative of the following methods.
+    lm = key_points.pose_landmarks
+    lm_pose = mp_pose.PoseLandmark
+    if not lm:
+        return
 
-        # Calculate angles
-        neck_inclination = calc_angle(l_shldr_x, l_shldr_y, l_ear_x, l_ear_y)
-        torso_inclination = calc_angle(l_hip_x, l_hip_y, l_shldr_x, l_shldr_y)
+    # Get the landmark coordinates
+    # Left shoulder.
+    l_shldr_x = int(lm.landmark[lm_pose.LEFT_SHOULDER].x * w)
+    l_shldr_y = int(lm.landmark[lm_pose.LEFT_SHOULDER].y * h)
+    # Right shoulder
+    r_shldr_x = int(lm.landmark[lm_pose.RIGHT_SHOULDER].x * w)
+    r_shldr_y = int(lm.landmark[lm_pose.RIGHT_SHOULDER].y * h)
+    # Left ear.
+    l_ear_x = int(lm.landmark[lm_pose.LEFT_EAR].x * w)
+    l_ear_y = int(lm.landmark[lm_pose.LEFT_EAR].y * h)
+    # Left hip.
+    l_hip_x = int(lm.landmark[lm_pose.LEFT_HIP].x * w)
+    l_hip_y = int(lm.landmark[lm_pose.LEFT_HIP].y * h)
 
-        # Draw landmarks
-        cv2.circle(image, (l_shldr_x, l_shldr_y), 7, yellow, -1)
-        cv2.circle(image, (l_ear_x, l_ear_y), 7, yellow, -1)
+    # Calculate distance between left shoulder and right shoulder points
+    offset = calc_distance(l_shldr_x, l_shldr_y, r_shldr_x, r_shldr_y)
 
-        # Let's take y - coordinate of P3 100px above x1,  for display elegance.
-        # Although we are taking y = 0 while calculating angle between P1,P2,P3.
-        cv2.circle(image, (l_shldr_x, l_shldr_y - 100), 7, yellow, -1)
-        cv2.circle(image, (r_shldr_x, r_shldr_y), 7, pink, -1)
-        cv2.circle(image, (l_hip_x, l_hip_y), 7, yellow, -1)
+    # This is to ensure the camera captures the person’s proper side view.
+    # We are measuring the horizontal distance between the left and right shoulder points.
+    # With correct alignment, the left and right points should almost coincide.
+    if offset < CAM_ALIGNMENT_OFFSET:
+        cv2.putText(image, str(int(offset)) + ' Aligned', (w - 150, 30), font, 0.9, green, 2)
+    else:
+        cv2.putText(image, str(int(offset)) + ' Not Aligned', (w - 150, 30), font, 0.9, red, 2)
 
-        # Similarly, here we are taking y - coordinate 100px above x1. Note that
-        # you can take any value for y, not necessarily 100 or 200 pixels.
-        cv2.circle(image, (l_hip_x, l_hip_y - 100), 7, yellow, -1)
+    # Calculate angles
+    neck_inclination = calc_angle(l_shldr_x, l_shldr_y, l_ear_x, l_ear_y)
+    torso_inclination = calc_angle(l_hip_x, l_hip_y, l_shldr_x, l_shldr_y)
 
-        # Put text, Posture and angle inclination.
-        # Text string for display.
-        angle_text_string = 'Neck : ' + str(int(neck_inclination)) + '  Torso : ' + str(int(torso_inclination))
+    # Draw landmarks
+    cv2.circle(image, (l_shldr_x, l_shldr_y), 7, yellow, -1)
+    cv2.circle(image, (l_ear_x, l_ear_y), 7, yellow, -1)
 
-        # Determine whether good posture or bad posture.
-        # The threshold angles have been set based on intuition.
-        if neck_inclination < 40 and torso_inclination < 10:
-            bad_frames = 0
-            good_frames += 1
+    # Let's take y - coordinate of P3 100px above x1,  for display elegance.
+    # Although we are taking y = 0 while calculating angle between P1,P2,P3.
+    cv2.circle(image, (l_shldr_x, l_shldr_y - 100), 7, yellow, -1)
+    cv2.circle(image, (r_shldr_x, r_shldr_y), 7, pink, -1)
+    cv2.circle(image, (l_hip_x, l_hip_y), 7, yellow, -1)
 
-            cv2.putText(image, angle_text_string, (10, 30), font, 0.9, light_green, 2)
-            cv2.putText(image, str(int(neck_inclination)), (l_shldr_x + 10, l_shldr_y), font, 0.9, light_green, 2)
-            cv2.putText(image, str(int(torso_inclination)), (l_hip_x + 10, l_hip_y), font, 0.9, light_green, 2)
+    # Similarly, here we are taking y - coordinate 100px above x1. Note that
+    # you can take any value for y, not necessarily 100 or 200 pixels.
+    cv2.circle(image, (l_hip_x, l_hip_y - 100), 7, yellow, -1)
 
-            # Join landmarks.
-            cv2.line(image, (l_shldr_x, l_shldr_y), (l_ear_x, l_ear_y), green, 4)
-            cv2.line(image, (l_shldr_x, l_shldr_y), (l_shldr_x, l_shldr_y - 100), green, 4)
-            cv2.line(image, (l_hip_x, l_hip_y), (l_shldr_x, l_shldr_y), green, 4)
-            cv2.line(image, (l_hip_x, l_hip_y), (l_hip_x, l_hip_y - 100), green, 4)
+    # Put text, Posture and angle inclination.
+    angle_text_string = 'Neck : ' + str(int(neck_inclination)) + '  Torso : ' + str(int(torso_inclination))
 
-        else:
-            good_frames = 0
-            bad_frames += 1
+    # Determine whether good posture or bad posture.
+    # The threshold angles have been set based on intuition.
+    if neck_inclination < NECK_INCLINATION_THRESHOLD and torso_inclination < TORSO_INCLINATION_THRESHOLD:
+        user.bad_frames = min(0, user.bad_frames - 1)
+        user.good_frames += 1
 
-            cv2.putText(image, angle_text_string, (10, 30), font, 0.9, red, 2)
-            cv2.putText(image, str(int(neck_inclination)), (l_shldr_x + 10, l_shldr_y), font, 0.9, red, 2)
-            cv2.putText(image, str(int(torso_inclination)), (l_hip_x + 10, l_hip_y), font, 0.9, red, 2)
+        cv2.putText(image, angle_text_string, (10, 30), font, 0.9, light_green, 2)
+        cv2.putText(image, str(int(neck_inclination)), (l_shldr_x + 10, l_shldr_y), font, 0.9, light_green, 2)
+        cv2.putText(image, str(int(torso_inclination)), (l_hip_x + 10, l_hip_y), font, 0.9, light_green, 2)
 
-            # Join landmarks.
-            cv2.line(image, (l_shldr_x, l_shldr_y), (l_ear_x, l_ear_y), red, 4)
-            cv2.line(image, (l_shldr_x, l_shldr_y), (l_shldr_x, l_shldr_y - 100), red, 4)
-            cv2.line(image, (l_hip_x, l_hip_y), (l_shldr_x, l_shldr_y), red, 4)
-            cv2.line(image, (l_hip_x, l_hip_y), (l_hip_x, l_hip_y - 100), red, 4)
+        # Line landmarks from before
+        cv2.line(image, (l_shldr_x, l_shldr_y), (l_ear_x, l_ear_y), green, 4)
+        cv2.line(image, (l_shldr_x, l_shldr_y), (l_shldr_x, l_shldr_y - 100), green, 4)
+        cv2.line(image, (l_hip_x, l_hip_y), (l_shldr_x, l_shldr_y), green, 4)
+        cv2.line(image, (l_hip_x, l_hip_y), (l_hip_x, l_hip_y - 100), green, 4)
 
-        # Calculate the time of remaining in a particular posture.
-        good_time = (1 / fps) * good_frames
-        bad_time = (1 / fps) * bad_frames
+    else:
+        user.good_frames = min(0, user.good_frames - 1)
+        user.bad_frames += 1
 
-        # Pose time.
-        if good_time > 0:
-            time_string_good = 'Good Posture Time : ' + str(round(good_time, 1)) + 's'
-            cv2.putText(image, time_string_good, (10, h - 20), font, 0.9, green, 2)
-        else:
-            time_string_bad = 'Bad Posture Time : ' + str(round(bad_time, 1)) + 's'
-            cv2.putText(image, time_string_bad, (10, h - 20), font, 0.9, red, 2)
+        cv2.putText(image, angle_text_string, (10, 30), font, 0.9, red, 2)
+        cv2.putText(image, str(int(neck_inclination)), (l_shldr_x + 10, l_shldr_y), font, 0.9, red, 2)
+        cv2.putText(image, str(int(torso_inclination)), (l_hip_x + 10, l_hip_y), font, 0.9, red, 2)
 
-        # If you stay in bad posture for more than 3 minutes (180s) send an alert.
-        if bad_time > 180:
-            send_notification()
-        # Write frames.
-        video_output.write(image)
+        # Line landmarks from before
+        cv2.line(image, (l_shldr_x, l_shldr_y), (l_ear_x, l_ear_y), red, 4)
+        cv2.line(image, (l_shldr_x, l_shldr_y), (l_shldr_x, l_shldr_y - 100), red, 4)
+        cv2.line(image, (l_hip_x, l_hip_y), (l_shldr_x, l_shldr_y), red, 4)
+        cv2.line(image, (l_hip_x, l_hip_y), (l_hip_x, l_hip_y - 100), red, 4)
 
-        # Display.
-        cv2.imshow('MediaPipe Pose', image)
-        if cv2.waitKey(5) & 0xFF == ord('q'):
-            break
+    # # Calculate the time of remaining in a particular posture
+    # good_time = (1 / fps) * good_frames
+    # bad_time = (1 / fps) * bad_frames
 
-cap.release()
-cv2.destroyAllWindows()
+    # # Pose time
+    # if good_time > 0:
+    #     time_string_good = 'Good Posture Time : ' + str(round(good_time, 1)) + 's'
+    #     cv2.putText(image, time_string_good, (10, h - 20), font, 0.9, green, 2)
+    # else:
+    #     time_string_bad = 'Bad Posture Time : ' + str(round(bad_time, 1)) + 's'
+    #     cv2.putText(image, time_string_bad, (10, h - 20), font, 0.9, red, 2)
+    #
+    # # If you stay in bad posture for more than 3 minutes (180s) send an alert
+    # if bad_time > 180:
+    #     send_notification()
+
+    # # Save frames as output video
+    # video_output.write(image)
+
+    # Display captured frame and add to user frames
+    cv2.imshow('MediaPipe Pose', image)
+    user.user_frames.append(image)
+
+    # if cv2.waitKey(5) & 0xFF == ord('q'):
+    #     return
+    cap.release()
+    cv2.destroyAllWindows()
+
+    if user.bad_frames > user.good_frames + GOOD_FRAMES_OFFSET:
+        return True, bad_posture_messages[random.randint(0, 4)]
+    else:
+        return False, ''
