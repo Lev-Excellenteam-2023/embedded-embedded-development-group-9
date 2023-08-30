@@ -65,7 +65,6 @@ def monitor(user: User) -> (bool, str):
 
     # Video writer for video output
     video_output = init_videowriter(cap)
-    time.sleep(5)
 
     # Capture frame from webcam
     success, original_image = cap.read()
@@ -147,7 +146,7 @@ def monitor(user: User) -> (bool, str):
     # Determine whether good posture or bad posture.
     # The threshold angles have been set based on intuition.
     if neck_inclination < NECK_INCLINATION_THRESHOLD and torso_inclination < TORSO_INCLINATION_THRESHOLD:
-        user.bad_frames = min(0, user.bad_frames - 1)
+        user.bad_frames = max(0, user.bad_frames - 1)
         # user.good_frames += 1
 
         cv2.putText(image, angle_text_string, (10, 30), font, 0.9, light_green, 2)
