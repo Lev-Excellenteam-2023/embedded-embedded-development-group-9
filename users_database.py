@@ -3,7 +3,7 @@ from user import User
 latest_frame = None
 detection_started = False
 users = []
-
+users_reports = {}
 
 def add_user(user: User):
     users.append(user)

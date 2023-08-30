@@ -4,12 +4,14 @@ import manager
 from person_detection import person_detection
 import users_database
 from notifications_interface.telegram_data import TELEGRAM_INIT_WEBHOOK_URL, API_URL, TOKEN
-chat_id_bounding_box_dict = {}
+from datetime import datetime
 
+chat_id_bounding_box_dict = {}
 
 requests.get(TELEGRAM_INIT_WEBHOOK_URL)
 app = Flask(__name__)
 in_register_progress = []
+registered_users = []
 
 
 @app.route('/message', methods=["POST"])
@@ -28,7 +30,10 @@ def handle_message():
         manager.add_user(chat_id, chat_id_bounding_box_dict[chat_id][int(message_text)])
         send_message(chat_id, "detection has been started...")
         in_register_progress.remove(chat_id)
+        registered_users.append(chat_id)
         print(users_database.users)
+    elif message_text == '/generate_report' and chat_id in registered_users:
+        send_message(chat_id, generate_report(chat_id))
     return Response("success")
 
 
@@ -45,6 +50,24 @@ def send_message(chat_id, text):
     send_url = API_URL + method
     payload = {'chat_id': chat_id, 'text': text}
     requests.get(send_url, params=payload)
+
+
+def generate_report(chat_id: int):
+    report = '\n'.join(users_database.users_reports[chat_id])
+    return report
+
+
+def insert_notification_to_user_report(chat_id: int, text: str):
+    report = datetime.now().strftime("%H:%M:%S") + " " + text
+    if chat_id in users_database.users_reports.keys():
+        users_database.users_reports[chat_id].append(report)
+    else:
+        users_database.users_reports[chat_id] = [report]
+
+
+def handle_notification(chat_id, text):
+    insert_notification_to_user_report(chat_id, text)
+    send_message(chat_id, text)
 
 
 def start_flask_server():
