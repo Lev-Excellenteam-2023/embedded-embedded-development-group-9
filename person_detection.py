@@ -1,5 +1,4 @@
 from ultralytics import YOLO
-from PIL import Image
 import cv2
 import math
 import os
@@ -23,11 +22,11 @@ classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "trai
 users = []
 
 
-def PersonDetection():
-    '''
+def person_detection():
+    """
     :return: detects people in the image, returns a tuple of image
     and dictionary with number of bounding box and their coordinattes
-    '''
+    """
     # start webcam
     cap = cv2.VideoCapture(0)
     cap.set(3, 640)
@@ -46,7 +45,7 @@ def PersonDetection():
     success, img = cap.read()
     results = model(img, stream=True)
     counter = 0
-    dict = {}
+    boxes_dict = {}
     # coordinates
     for r in results:
         images = []
@@ -58,7 +57,7 @@ def PersonDetection():
             cls = int(box.cls[0])
             print("Class name -->", classNames[cls])
 
-            if (classNames[cls] == "person"):
+            if classNames[cls] == "person":
                 # bounding box
                 x1, y1, x2, y2 = box.xyxy[0]
                 x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)  # convert to int values
@@ -66,7 +65,7 @@ def PersonDetection():
                 # put box in cam
                 cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 3)
                 print("{}  {}  {}  {}".format(x1, y1, x2, y2))
-                dict[counter] = ((x1, y1, x2, y2))
+                boxes_dict[counter] = (x1, y1, x2, y2)
                 # pose_estimator_dim.append([(x1, y1), (x2, y2)])
                 cropped_img = img[y1:y2, x1:x2]
 
@@ -74,15 +73,15 @@ def PersonDetection():
                 # object details
                 org = [x1, y1]
                 font = cv2.FONT_HERSHEY_SIMPLEX
-                fontScale = 1
+                font_scale = 1
                 color = (255, 0, 0)
                 thickness = 2
                 label = str(counter)
                 t_size = cv2.getTextSize(label, 0, fontScale=1, thickness=2)[0]
                 c2 = x1 + t_size[0], y1 - t_size[1] - 3
                 cv2.rectangle(img, (x1, y1), c2, (255, 0, 255), 3)
-                #cv2.putText(img, label, (x1, y1 - 2), 0, 1, [255, 255, 255], thickness=1, lineType=cv2.LINE_AA)
-                cv2.putText(img, label, (x1, y1 - 2), font, fontScale, color, thickness)
+                # cv2.putText(img, label, (x1, y1 - 2), 0, 1, [255, 255, 255], thickness=1, lineType=cv2.LINE_AA)
+                cv2.putText(img, label, (x1, y1 - 2), font, font_scale, color, thickness)
 
                 cv2.imshow(("Cropped Image{}".format(counter)), cropped_img)
                 counter += 1
@@ -94,4 +93,4 @@ def PersonDetection():
                 imagepath = f'{path}/Bounded_image' + str(counter) + '.jpg'
                 cap.release()
                 cv2.destroyAllWindows()
-    return (imagepath, dict)
+    return imagepath, boxes_dict

@@ -1,5 +1,5 @@
 opencv-python
-opencv-python mediapipe msvc-runtime
+mediapipe
 ultralytics
 flask
 requests
