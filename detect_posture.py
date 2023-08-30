@@ -195,10 +195,9 @@ def monitor(user: User) -> (bool, str):
 
     # Display captured frame and add to user frames
     cv2.imshow('MediaPipe Pose', image)
-    user.user_frames.append(image)
+    # user.user_frames.append(image)
+    users_database.update_user(user)
 
-    # if cv2.waitKey(5) & 0xFF == ord('q'):
-    #     return
     cap.release()
     cv2.destroyAllWindows()
 

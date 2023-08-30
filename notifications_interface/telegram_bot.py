@@ -28,7 +28,6 @@ def handle_message():
         manager.add_user(chat_id, chat_id_bounding_box_dict[chat_id][int(message_text)])
         send_message(chat_id, "detection has been started...")
         in_register_progress.remove(chat_id)
-        print(users_database.users)
     return Response("success")
 
 
