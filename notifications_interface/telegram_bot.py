@@ -3,7 +3,7 @@ from flask import Flask, request, Response
 import manager
 from person_detection import person_detection
 import users_database
-from telegram_data import TELEGRAM_INIT_WEBHOOK_URL, API_URL, TOKEN
+from notifications_interface.telegram_data import TELEGRAM_INIT_WEBHOOK_URL, API_URL, TOKEN
 chat_id_bounding_box_dict = {}
 
 

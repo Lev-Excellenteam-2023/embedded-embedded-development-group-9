@@ -6,7 +6,7 @@ import math as m
 import mediapipe as mp
 from user import User
 
-from consts import CAM_ALIGNMENT_OFFSET, NECK_INCLINATION_THRESHOLD, TORSO_INCLINATION_THRESHOLD, GOOD_FRAMES_OFFSET
+from consts import CAM_ALIGNMENT_OFFSET, NECK_INCLINATION_THRESHOLD, TORSO_INCLINATION_THRESHOLD, BAD_POSTURE_MIN
 
 
 def calc_distance(x1, y1, x2, y2):
@@ -195,7 +195,7 @@ def monitor(user: User) -> (bool, str):
 
     # Display captured frame and add to user frames
     cv2.imshow('MediaPipe Pose', image)
-    user.pose_frames.append(image)
+    user.user_frames.append(image)
 
     # if cv2.waitKey(5) & 0xFF == ord('q'):
     #     return
