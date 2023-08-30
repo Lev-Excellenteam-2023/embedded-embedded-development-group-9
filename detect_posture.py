@@ -202,7 +202,7 @@ def monitor(user: User) -> (bool, str):
     cap.release()
     cv2.destroyAllWindows()
 
-    if user.bad_frames > user.good_frames + GOOD_FRAMES_OFFSET:
+    if user.bad_frames > BAD_POSTURE_MIN:
         return True, bad_posture_messages[random.randint(0, 4)]
     else:
         return False, ''
