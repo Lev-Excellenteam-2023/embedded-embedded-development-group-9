@@ -2,6 +2,7 @@ from ultralytics import YOLO
 import cv2
 import math
 import os
+import users_database
 
 # model
 model = YOLO("yolo-Weights/yolov8n.pt")
@@ -27,22 +28,24 @@ def person_detection():
     :return: detects people in the image, returns a tuple of image
     and dictionary with number of bounding box and their coordinattes
     """
-    # start webcam
-    cap = cv2.VideoCapture(0)
-    cap.set(3, 640)
-    cap.set(4, 480)
 
-    # create a folder for all the images
-    path = "images"
-    if not os.path.exists(path):
-        # Create a new directory because it does not exist
-        os.makedirs(path)
+    if users_database.detection_started:
+        img = users_database.latest_frame
+    else:
+        # start webcam
+        cap = cv2.VideoCapture(0)
+        cap.set(3, 640)
+        cap.set(4, 480)
 
-    images = []
+        # create a folder for all the images
+        path = "images"
+        if not os.path.exists(path):
+            # Create a new directory because it does not exist
+            os.makedirs(path)
 
-    # while True:
-    # getting one image from he webcam
-    success, img = cap.read()
+        # getting one image from the webcam
+        success, img = cap.read()
+
     results = model(img, stream=True)
     counter = 0
     boxes_dict = {}

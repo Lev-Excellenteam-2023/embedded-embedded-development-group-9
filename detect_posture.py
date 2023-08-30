@@ -5,7 +5,7 @@ import time
 import math as m
 import mediapipe as mp
 from user import User
-
+import users_database
 from consts import CAM_ALIGNMENT_OFFSET, NECK_INCLINATION_THRESHOLD, TORSO_INCLINATION_THRESHOLD, BAD_POSTURE_MIN
 
 
@@ -71,6 +71,7 @@ def monitor(user: User) -> (bool, str):
     if not success:
         print("Null.Frames")
         return False, ''
+    users_database.latest_frame = original_image
 
     # Get webcam default frames per second
     fps = cap.get(cv2.CAP_PROP_FPS)
