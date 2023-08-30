@@ -29,3 +29,7 @@ def main():
             is_bad_posture, message = monitor(user)
         if is_bad_posture:
             send_message(user.chat_id, message)
+
+
+if __name__ == "__main__":
+    main()
