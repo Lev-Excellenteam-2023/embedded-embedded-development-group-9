@@ -6,7 +6,7 @@ import math as m
 import mediapipe as mp
 from user import User
 
-from consts import CAM_ALIGNMENT_OFFSET, NECK_INCLINATION_THRESHOLD, TORSO_INCLINATION_THRESHOLD, GOOD_FRAMES_OFFSET
+from consts import CAM_ALIGNMENT_OFFSET, NECK_INCLINATION_THRESHOLD, TORSO_INCLINATION_THRESHOLD, BAD_POSTURE_MIN
 
 
 def calc_distance(x1, y1, x2, y2):
@@ -65,13 +65,12 @@ def monitor(user: User) -> (bool, str):
 
     # Video writer for video output
     video_output = init_videowriter(cap)
-    time.sleep(5)
 
     # Capture frame from webcam
     success, original_image = cap.read()
     if not success:
         print("Null.Frames")
-        return
+        return False, ''
 
     # Get webcam default frames per second
     fps = cap.get(cv2.CAP_PROP_FPS)
@@ -96,7 +95,7 @@ def monitor(user: User) -> (bool, str):
     lm = key_points.pose_landmarks
     lm_pose = mp_pose.PoseLandmark
     if not lm:
-        return
+        return False, ''
 
     # Get the landmark coordinates
     # Left shoulder.
@@ -147,8 +146,8 @@ def monitor(user: User) -> (bool, str):
     # Determine whether good posture or bad posture.
     # The threshold angles have been set based on intuition.
     if neck_inclination < NECK_INCLINATION_THRESHOLD and torso_inclination < TORSO_INCLINATION_THRESHOLD:
-        user.bad_frames = min(0, user.bad_frames - 1)
-        user.good_frames += 1
+        user.bad_frames = max(0, user.bad_frames - 1)
+        # user.good_frames += 1
 
         cv2.putText(image, angle_text_string, (10, 30), font, 0.9, light_green, 2)
         cv2.putText(image, str(int(neck_inclination)), (l_shldr_x + 10, l_shldr_y), font, 0.9, light_green, 2)
@@ -161,7 +160,7 @@ def monitor(user: User) -> (bool, str):
         cv2.line(image, (l_hip_x, l_hip_y), (l_hip_x, l_hip_y - 100), green, 4)
 
     else:
-        user.good_frames = min(0, user.good_frames - 1)
+        # user.good_frames = min(0, user.good_frames - 1)
         user.bad_frames += 1
 
         cv2.putText(image, angle_text_string, (10, 30), font, 0.9, red, 2)
@@ -195,14 +194,14 @@ def monitor(user: User) -> (bool, str):
 
     # Display captured frame and add to user frames
     cv2.imshow('MediaPipe Pose', image)
-    user.pose_frames.append(image)
+    user.user_frames.append(image)
 
     # if cv2.waitKey(5) & 0xFF == ord('q'):
     #     return
     cap.release()
     cv2.destroyAllWindows()
 
-    if user.bad_frames > user.good_frames + GOOD_FRAMES_OFFSET:
+    if user.bad_frames > BAD_POSTURE_MIN:
         return True, bad_posture_messages[random.randint(0, 4)]
     else:
         return False, ''

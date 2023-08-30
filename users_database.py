@@ -1,5 +1,7 @@
 from user import User
 
+latest_frame = None
+detection_started = False
 users = []
 
 
