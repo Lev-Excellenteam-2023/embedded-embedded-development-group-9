@@ -60,8 +60,7 @@ pose = mp_pose.Pose()
 
 def monitor(user: User) -> (bool, str):
     # For webcam input replace file name with 0
-    # file_name = 0
-    file_name = r'C:\Users\tamar\excellenteam\bootcamp\raspberryProj\project\test-data\WIN_20230829_10_34_47_Pro.mp4'
+    file_name = 0
     cap = cv2.VideoCapture(file_name)
 
     # Video writer for video output
@@ -149,7 +148,7 @@ def monitor(user: User) -> (bool, str):
     # The threshold angles have been set based on intuition.
     if neck_inclination < NECK_INCLINATION_THRESHOLD and torso_inclination < TORSO_INCLINATION_THRESHOLD:
         user.bad_frames = min(0, user.bad_frames - 1)
-        user.good_frames += 1
+        # user.good_frames += 1
 
         cv2.putText(image, angle_text_string, (10, 30), font, 0.9, light_green, 2)
         cv2.putText(image, str(int(neck_inclination)), (l_shldr_x + 10, l_shldr_y), font, 0.9, light_green, 2)
@@ -162,7 +161,7 @@ def monitor(user: User) -> (bool, str):
         cv2.line(image, (l_hip_x, l_hip_y), (l_hip_x, l_hip_y - 100), green, 4)
 
     else:
-        user.good_frames = min(0, user.good_frames - 1)
+        # user.good_frames = min(0, user.good_frames - 1)
         user.bad_frames += 1
 
         cv2.putText(image, angle_text_string, (10, 30), font, 0.9, red, 2)
