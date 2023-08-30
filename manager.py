@@ -1,6 +1,10 @@
+import threading
 from person_detection import person_detection
 from user import User
 import users_database
+from notifications_interface.telegram_bot import start_flask_server, send_message
+from users_database import users
+from detect_posture import monitor
 
 
 def get_workspace_image():
@@ -15,3 +19,13 @@ def add_user(chat_id: int, coordinates: tuple):
     users_database.add_user(new_user)
 
 
+def main():
+    # Start the Flask server in a separate thread
+    flask_thread = threading.Thread(target=start_flask_server)
+    flask_thread.start()
+
+    while True:
+        for user in users:
+            is_bad_posture, message = monitor(user)
+        if is_bad_posture:
+            send_message(user.chat_id, message)
