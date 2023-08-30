@@ -9,8 +9,10 @@ class User:
     bad_frames: int
     pose_frames: list
 
-    def set_crop(self, coordinates: tuple):
-        self.crop = coordinates
-
-    def set_chat_id(self, chat_id):
+    def __init__(self, chat_id, crop):
         self.chat_id = chat_id
+        self.crop = crop
+        self.good_frames = 0
+        self.bad_frames = 0
+        self.user_frames = []
+

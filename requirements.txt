@@ -1,0 +1,5 @@
+opencv-python
+opencv-python mediapipe msvc-runtime
+ultralytics
+flask
+requests
