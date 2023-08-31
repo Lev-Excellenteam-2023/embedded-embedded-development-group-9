@@ -7,6 +7,7 @@ from json.decoder import JSONDecodeError
 latest_frame = None
 detection_started = False
 filename = r'C:\Users\tamar\excellenteam\bootcamp\raspberryProj\project\users_file.json'
+users_reports = {}
 
 
 # users = []
@@ -29,6 +30,17 @@ def add_user(user: User):
 
     with open(filename, 'w') as json_file:
         json.dump(data, json_file, indent=4)
+
+
+
+    for data_user in data:
+        if data_user['chat_id'] == user.chat_id:
+            return
+    data.append(user.to_dict())
+
+    with open(filename, 'w') as json_file:
+        json.dump(data, json_file, indent=4)
+
 
 
 # def get_user(chat_id: int) -> User:
@@ -73,4 +85,8 @@ def update_user(user):
             updated_data.append(user_data)
 
     with open(filename, 'w') as json_file:
+
         json.dump(updated_data, json_file, indent=4)
+
+        json.dump(updated_data, json_file, indent=4)
+
